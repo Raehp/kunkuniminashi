@@ -1,6 +1,8 @@
 package com.urim.ikunmianshi.model.dto.file;
 
 import java.io.Serializable;
+
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 
 /**
@@ -15,5 +17,6 @@ public class UploadFileRequest implements Serializable {
      */
     private String biz;
 
+    @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }
