@@ -1,7 +1,10 @@
 package com.urim.ikunmianshi.model.dto.question;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.urim.ikunmianshi.common.PageRequest;
+import com.urim.ikunmianshi.model.entity.Question;
+import com.urim.ikunmianshi.model.vo.QuestionBankVO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -54,6 +57,12 @@ public class QuestionQueryRequest extends PageRequest implements Serializable {
      * 推荐答案
      */
     private String answer;
+
+    /**
+     * 题库 id
+     */
+    private Long questionBankId;
+
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

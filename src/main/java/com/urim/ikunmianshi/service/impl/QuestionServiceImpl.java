@@ -1,18 +1,26 @@
 package com.urim.ikunmianshi.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.urim.ikunmianshi.annotation.AuthCheck;
+import com.urim.ikunmianshi.common.BaseResponse;
 import com.urim.ikunmianshi.common.ErrorCode;
+import com.urim.ikunmianshi.common.ResultUtils;
 import com.urim.ikunmianshi.constant.CommonConstant;
+import com.urim.ikunmianshi.constant.UserConstant;
 import com.urim.ikunmianshi.exception.ThrowUtils;
 import com.urim.ikunmianshi.mapper.QuestionMapper;
 import com.urim.ikunmianshi.model.dto.question.QuestionQueryRequest;
 import com.urim.ikunmianshi.model.entity.Question;
+import com.urim.ikunmianshi.model.entity.QuestionBankQuestion;
 import com.urim.ikunmianshi.model.entity.User;
 import com.urim.ikunmianshi.model.vo.QuestionVO;
 import com.urim.ikunmianshi.model.vo.UserVO;
+import com.urim.ikunmianshi.service.QuestionBankQuestionService;
 import com.urim.ikunmianshi.service.QuestionService;
 import com.urim.ikunmianshi.service.UserService;
 import com.urim.ikunmianshi.utils.SqlUtils;
@@ -20,10 +28,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +46,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private QuestionBankQuestionService questionBankQuestionService;
 
     /**
      * 校验数据
@@ -183,4 +194,38 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         return questionVOPage;
     }
 
+    /**
+     * 分页获取题目列表（仅管理员可用）
+     *
+     * @param questionQueryRequest
+     * @return
+     */
+    @Override
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public Page<Question> listQuestionByPage(@RequestBody QuestionQueryRequest questionQueryRequest) {
+        long current = questionQueryRequest.getCurrent();
+        long size = questionQueryRequest.getPageSize();
+
+        // 题目表查询条件
+        QueryWrapper<Question> queryWrapper = this.getQueryWrapper(questionQueryRequest);
+        // 根据题库查询题目列表接口
+        Long questionBankId = questionQueryRequest.getQuestionBankId();
+        if (questionBankId != null) {
+            // 查询题库内的题目 id
+            LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                    .select(QuestionBankQuestion::getQuestionId)
+                    .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
+            List<QuestionBankQuestion> questionList = questionBankQuestionService.list(lambdaQueryWrapper);
+            if (CollUtil.isNotEmpty(questionList)) {
+                // 取出题目id集合
+                Set<Long> questionIdList = questionList.stream()
+                        .map(QuestionBankQuestion::getQuestionId)
+                        .collect(Collectors.toSet());
+                queryWrapper.in("id", questionIdList);
+            }
+        }
+        // 查询数据库
+        Page<Question> questionPage = this.page(new Page<>(current, size), queryWrapper);
+        return questionPage;
+    }
 }
